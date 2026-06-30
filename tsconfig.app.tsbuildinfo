@@ -1,0 +1,1 @@
+{"root":["./src/main.ts","./src/vite-env.d.ts","./src/App.vue","./src/components/Dashboard.vue","./src/components/ExportBar.vue","./src/components/FilterBar.vue","./src/components/HelloWorld.vue","./src/components/Pagination.vue","./src/components/Sidebar.vue","./src/components/TopBar.vue","./src/components/VmTable.vue"],"version":"5.9.3"}
