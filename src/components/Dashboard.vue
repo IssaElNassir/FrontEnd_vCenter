@@ -13,6 +13,7 @@ const startDate = ref('')
 const endDate = ref('')
 const currentPage = ref(1)
 const totalPages = ref(15)
+const isSidebarCollapsed = ref(false)
 
 const vcenters = [
   { id: 'vcenter1', name: 'vCenter Production' },
@@ -42,9 +43,10 @@ const handlePageChange = (page) => {
       v-model:folder="selectedFolder"
       v-model:startDate="startDate"
       v-model:endDate="endDate"
+      v-model:collapsed="isSidebarCollapsed"
       @selectVcenter="handleVcenterChange"
     />
-    <div class="main-content">
+    <div :class="['main-content', { expanded: isSidebarCollapsed }]">
       <TopBar />
       <div class="content-area">
         <ExportBar />
@@ -70,6 +72,11 @@ const handlePageChange = (page) => {
   display: flex;
   flex-direction: column;
   margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.expanded {
+  margin-left: 0;
 }
 
 .content-area {

@@ -9,7 +9,8 @@ const props = defineProps({
   cluster: { type: String, default: '' },
   folder: { type: String, default: '' },
   startDate: { type: String, default: '' },
-  endDate: { type: String, default: '' }
+  endDate: { type: String, default: '' },
+  collapsed: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([
@@ -17,14 +18,9 @@ const emit = defineEmits([
   'update:cluster',
   'update:folder',
   'update:startDate',
-  'update:endDate'
+  'update:endDate',
+  'update:collapsed'
 ])
-
-const isCollapsed = ref(false)
-
-const toggleSidebar = () => {
-  isCollapsed.value = !isCollapsed.value
-}
 
 const resetFilters = () => {
   emit('update:cluster', '')
@@ -35,7 +31,7 @@ const resetFilters = () => {
 </script>
 
 <template>
-  <aside :class="['sidebar', { collapsed: isCollapsed }]">
+  <aside :class="['sidebar', { collapsed }]">
     <div class="sidebar-header">
       <div class="logo">
         <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -44,9 +40,9 @@ const resetFilters = () => {
           <line x1="6" y1="6" x2="6.01" y2="6" />
           <line x1="6" y1="18" x2="6.01" y2="18" />
         </svg>
-        <span v-if="!isCollapsed" class="logo-text">vCenter Monitor</span>
+        <span class="logo-text">vCenter Monitor</span>
       </div>
-      <button class="toggle-btn" @click="toggleSidebar">
+      <button class="toggle-btn" @click="emit('update:collapsed', true)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="15 18 9 12 15 6" />
         </svg>
@@ -55,7 +51,7 @@ const resetFilters = () => {
 
     <nav class="sidebar-nav">
       <div class="nav-section">
-        <span v-if="!isCollapsed" class="section-label">Environnements</span>
+        <span class="section-label">Environnements</span>
         <div class="vcenter-buttons">
           <button
             v-for="vc in vcenters"
@@ -67,13 +63,13 @@ const resetFilters = () => {
               <rect x="2" y="2" width="20" height="8" rx="2" />
               <rect x="2" y="14" width="20" height="8" rx="2" />
             </svg>
-            <span v-if="!isCollapsed" class="btn-text">{{ vc.name }}</span>
-            <span v-if="!isCollapsed" class="status-dot" :class="vc.id === 'vcenter1' ? 'online' : 'offline'"></span>
+            <span class="btn-text">{{ vc.name }}</span>
+            <span class="status-dot" :class="vc.id === 'vcenter1' ? 'online' : 'offline'"></span>
           </button>
         </div>
       </div>
 
-      <div v-if="!isCollapsed" class="nav-section filters-section">
+      <div class="nav-section filters-section">
         <span class="section-label">Filtres</span>
 
         <div class="filter-group">
@@ -129,13 +125,24 @@ const resetFilters = () => {
       </div>
     </nav>
 
-    <div v-if="!isCollapsed" class="sidebar-footer">
+    <div class="sidebar-footer">
       <div class="status-bar">
         <span class="status-indicator online"></span>
         <span class="status-text">Connexion active</span>
       </div>
     </div>
   </aside>
+
+  <button
+    v-if="collapsed"
+    class="reopen-btn"
+    @click="emit('update:collapsed', false)"
+    aria-label="Ouvrir le menu"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  </button>
 </template>
 
 <style scoped>
@@ -148,12 +155,15 @@ const resetFilters = () => {
   background: var(--neutral-900);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease;
+  transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease;
   z-index: 100;
 }
 
 .sidebar.collapsed {
-  width: 72px;
+  transform: translateX(-100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .sidebar-header {
@@ -203,10 +213,6 @@ const resetFilters = () => {
 .toggle-btn svg {
   width: 18px;
   height: 18px;
-}
-
-.sidebar.collapsed .toggle-btn svg {
-  transform: rotate(180deg);
 }
 
 .sidebar-nav {
@@ -441,5 +447,34 @@ const resetFilters = () => {
 .status-text {
   font-size: 12px;
   color: var(--neutral-400);
+}
+
+.reopen-btn {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  z-index: 101;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s;
+}
+
+.reopen-btn:hover {
+  background: var(--primary-dark);
+  transform: scale(1.05);
+}
+
+.reopen-btn svg {
+  width: 20px;
+  height: 20px;
 }
 </style>
