@@ -1,16 +1,15 @@
 <script setup>
-import { ref } from 'vue'
-
 const props = defineProps({
-  vcenters: { type: Array, required: true },
-  selectedVcenter: { type: String, required: true },
-  clusters: { type: Array, required: true },
-  folders: { type: Array, required: true },
-  cluster: { type: String, default: '' },
-  folder: { type: String, default: '' },
-  startDate: { type: String, default: '' },
-  endDate: { type: String, default: '' },
-  collapsed: { type: Boolean, default: false }
+  vcenters: Array,
+  selectedVcenter: [String, Object],
+  clusters: Array,
+  folders: Array,
+  cluster: String,
+  folder: String,
+  startDate: String,
+  endDate: String,
+  currentView: String,
+  collapsed: Boolean
 })
 
 const emit = defineEmits([
@@ -19,7 +18,9 @@ const emit = defineEmits([
   'update:folder',
   'update:startDate',
   'update:endDate',
-  'update:collapsed'
+  'update:collapsed',
+  'resetFilters',
+  'changeView'
 ])
 
 const resetFilters = () => {
@@ -27,11 +28,26 @@ const resetFilters = () => {
   emit('update:folder', '')
   emit('update:startDate', '')
   emit('update:endDate', '')
+  emit('resetFilters')
+}
+
+const getClusterValue = (cluster) => {
+  if (typeof cluster === 'string') return cluster
+  return cluster?.id || cluster?.cluster || cluster?.name || ''
+}
+
+const getClusterLabel = (cluster) => {
+  if (typeof cluster === 'string') return cluster
+  return cluster?.name || cluster?.cluster || cluster?.id || ''
 }
 </script>
 
 <template>
-  <aside :class="['sidebar', { collapsed }]">
+  <!-- SIDEBAR -->
+  <aside
+    v-if="!collapsed"
+    class="sidebar"
+  >
     <div class="sidebar-header">
       <div class="logo">
         <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -40,9 +56,15 @@ const resetFilters = () => {
           <line x1="6" y1="6" x2="6.01" y2="6" />
           <line x1="6" y1="18" x2="6.01" y2="18" />
         </svg>
+
         <span class="logo-text">vCenter Monitor</span>
       </div>
-      <button class="toggle-btn" @click="emit('update:collapsed', true)">
+
+      <!-- Fermer complètement -->
+      <button
+        class="toggle-btn"
+        @click="emit('update:collapsed', true)"
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="15 18 9 12 15 6" />
         </svg>
@@ -50,35 +72,103 @@ const resetFilters = () => {
     </div>
 
     <nav class="sidebar-nav">
+
       <div class="nav-section">
         <span class="section-label">Environnements</span>
+
         <div class="vcenter-buttons">
           <button
             v-for="vc in vcenters"
             :key="vc.id"
-            :class="['vcenter-btn', { active: selectedVcenter === vc.id }]"
+            :class="[
+              'vcenter-btn',
+              {
+                active:
+                  selectedVcenter?.id === vc.id ||
+                  selectedVcenter === vc.id
+              }
+            ]"
             @click="emit('selectVcenter', vc.id)"
           >
-            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              class="btn-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <rect x="2" y="2" width="20" height="8" rx="2" />
               <rect x="2" y="14" width="20" height="8" rx="2" />
             </svg>
-            <span class="btn-text">{{ vc.name }}</span>
-            <span class="status-dot" :class="vc.id === 'vcenter1' ? 'online' : 'offline'"></span>
+
+            <span class="btn-text">
+              {{ vc.name }}
+            </span>
+
+            <span class="status-dot online"></span>
           </button>
         </div>
       </div>
 
-      <div class="nav-section filters-section">
+      <div class="nav-section">
+        <span class="section-label">Navigation</span>
+
+        <button
+          class="nav-action-btn"
+          :class="{ active: currentView === 'inventory' }"
+          @click="emit('changeView', 'inventory')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M7 8h10" />
+            <path d="M7 12h10" />
+            <path d="M7 16h6" />
+          </svg>
+
+          <span>Inventaire</span>
+        </button>
+
+        <button
+          class="nav-action-btn"
+          :class="{ active: currentView === 'history' }"
+          @click="emit('changeView', 'history')"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+
+          <span>Historique</span>
+        </button>
+      </div>
+
+      <div
+        v-if="currentView === 'inventory'"
+        class="nav-section filters-section"
+      >
         <span class="section-label">Filtres</span>
 
         <div class="filter-group">
           <label>Cluster</label>
+
           <div class="select-wrapper">
-            <select :value="cluster" @change="emit('update:cluster', $event.target.value)">
-              <option value="">Tous les clusters</option>
-              <option v-for="c in clusters" :key="c" :value="c">{{ c }}</option>
+            <select
+              :value="cluster"
+              @change="emit('update:cluster', $event.target.value)"
+            >
+              <option value="">
+                Tous les clusters
+              </option>
+
+              <option
+                v-for="c in clusters"
+                :key="getClusterValue(c)"
+                :value="getClusterValue(c)"
+              >
+                {{ getClusterLabel(c) }}
+              </option>
             </select>
+
             <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -87,11 +177,25 @@ const resetFilters = () => {
 
         <div class="filter-group">
           <label>Dossier</label>
+
           <div class="select-wrapper">
-            <select :value="folder" @change="emit('update:folder', $event.target.value)">
-              <option value="">Tous les dossiers</option>
-              <option v-for="f in folders" :key="f" :value="f">{{ f }}</option>
+            <select
+              :value="folder"
+              @change="emit('update:folder', $event.target.value)"
+            >
+              <option value="">
+                Tous les dossiers
+              </option>
+
+              <option
+                v-for="f in folders"
+                :key="f"
+                :value="f"
+              >
+                {{ f }}
+              </option>
             </select>
+
             <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -100,13 +204,18 @@ const resetFilters = () => {
 
         <div class="filter-group">
           <label>Période</label>
+
           <div class="date-inputs">
             <input
               type="date"
               :value="startDate"
               @input="emit('update:startDate', $event.target.value)"
             />
-            <span class="date-separator">à</span>
+
+            <span class="date-separator">
+              à
+            </span>
+
             <input
               type="date"
               :value="endDate"
@@ -115,14 +224,19 @@ const resetFilters = () => {
           </div>
         </div>
 
-        <button class="reset-btn" @click="resetFilters">
+        <button
+          class="reset-btn"
+          @click="resetFilters"
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="1 4 1 10 7 10" />
             <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
           </svg>
+
           Réinitialiser
         </button>
       </div>
+
     </nav>
 
     <div class="sidebar-footer">
@@ -133,16 +247,23 @@ const resetFilters = () => {
     </div>
   </aside>
 
+  <!-- Bouton flottant pour rouvrir -->
   <button
     v-if="collapsed"
     class="reopen-btn"
     @click="emit('update:collapsed', false)"
     aria-label="Ouvrir le menu"
   >
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
       <polyline points="9 18 15 12 9 6" />
     </svg>
   </button>
+
 </template>
 
 <style scoped>
@@ -155,15 +276,7 @@ const resetFilters = () => {
   background: var(--neutral-900);
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease, opacity 0.3s ease, visibility 0.3s ease;
   z-index: 100;
-}
-
-.sidebar.collapsed {
-  transform: translateX(-100%);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .sidebar-header {
@@ -299,6 +412,34 @@ const resetFilters = () => {
 .status-dot.offline {
   background: var(--error);
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
+.nav-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  background: var(--neutral-800);
+  border: 1px solid var(--neutral-700);
+  border-radius: var(--radius-md);
+  color: var(--neutral-300);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-action-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.nav-action-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .filters-section {
@@ -451,16 +592,16 @@ const resetFilters = () => {
 
 .reopen-btn {
   position: fixed;
-  left: 16px;
   top: 16px;
-  z-index: 101;
-  width: 40px;
-  height: 40px;
-  border: none;
+  left: 16px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--radius-md);
+  border: none;
   background: var(--primary);
   color: white;
   cursor: pointer;
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;

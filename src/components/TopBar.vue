@@ -1,10 +1,19 @@
 <script setup>
 import { ref } from 'vue'
 
-const showLogoutConfirm = ref(false)
+const props = defineProps({
+  searchQuery: { type: String, default: '' },
+  notifications: { type: Array, default: () => [] }
+})
 
-const handleLogout = () => {
+const emit = defineEmits(['update:searchQuery', 'logout'])
+
+const showLogoutConfirm = ref(false)
+const showNotifications = ref(false)
+
+const confirmLogout = () => {
   showLogoutConfirm.value = false
+  emit('logout')
 }
 </script>
 
@@ -20,15 +29,36 @@ const handleLogout = () => {
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
-        <input type="text" placeholder="Rechercher une VM..." />
+        <input
+          type="text"
+          placeholder="Rechercher une VM..."
+          :value="searchQuery"
+          @input="emit('update:searchQuery', $event.target.value)"
+        />
       </div>
-      <button class="notif-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
-        <span class="notif-badge">3</span>
-      </button>
+
+      <div class="notif-wrapper">
+        <button class="notif-btn" @click="showNotifications = !showNotifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          <span v-if="notifications.length" class="notif-badge">{{ notifications.length }}</span>
+        </button>
+
+        <div v-if="showNotifications && notifications.length" class="notif-dropdown" @click.stop>
+          <div class="notif-header">Modifications du jour ({{ notifications.length }})</div>
+          <div class="notif-list">
+            <div v-for="(notif, index) in notifications" :key="index" class="notif-item">
+              <div class="notif-item-main">{{ notif.vm_name || notif.vm_uid }}</div>
+              <div class="notif-item-detail">
+                <strong>{{ notif.libelle }}</strong> : {{ notif.old_value }} → {{ notif.new_value }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="user-menu">
         <button class="logout-btn" @click="showLogoutConfirm = true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -54,7 +84,7 @@ const handleLogout = () => {
         <p>Êtes-vous sûr de vouloir vous déconnecter ?</p>
         <div class="modal-actions">
           <button class="btn-secondary" @click="showLogoutConfirm = false">Annuler</button>
-          <button class="btn-primary" @click="handleLogout">Déconnexion</button>
+          <button class="btn-primary" @click="confirmLogout">Déconnexion</button>
         </div>
       </div>
     </div>
@@ -135,6 +165,10 @@ const handleLogout = () => {
   color: var(--neutral-400);
 }
 
+.notif-wrapper {
+  position: relative;
+}
+
 .notif-btn {
   position: relative;
   background: none;
@@ -173,6 +207,54 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.notif-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 360px;
+  background: white;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.notif-header {
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--neutral-700);
+  background: var(--neutral-50);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.notif-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.notif-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item-main {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-800);
+  margin-bottom: 4px;
+}
+
+.notif-item-detail {
+  font-size: 13px;
+  color: var(--neutral-500);
 }
 
 .user-menu {

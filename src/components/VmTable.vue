@@ -1,35 +1,24 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
-  selectedVcenter: { type: String, required: true }
+  rows: { type: Array, default: () => [] },
+  loading: { type: Boolean, default: false },
+  emptyMessage: { type: String, default: 'Aucune donnée.' }
 })
 
 const sortColumn = ref('')
 const sortDirection = ref('asc')
 
-const vms = ref([
-  { name: 'VM-WEB-01', cpu: 4, ram: 16, storage: 500, os: 'Windows Server 2022', cluster: 'Cluster-A', folder: 'Production', createdAt: '2023-01-15' },
-  { name: 'VM-DB-01', cpu: 8, ram: 32, storage: 1024, os: 'Ubuntu 22.04 LTS', cluster: 'Cluster-A', folder: 'Production', createdAt: '2023-02-20' },
-  { name: 'VM-APP-01', cpu: 2, ram: 8, storage: 250, os: 'CentOS 8', cluster: 'Cluster-B', folder: 'Test', createdAt: '2023-03-10' },
-  { name: 'VM-WEB-02', cpu: 4, ram: 16, storage: 500, os: 'Windows Server 2019', cluster: 'Cluster-A', folder: 'Production', createdAt: '2023-04-05' },
-  { name: 'VM-DEV-01', cpu: 2, ram: 4, storage: 120, os: 'Debian 11', cluster: 'Cluster-C', folder: 'Development', createdAt: '2023-05-12' },
-  { name: 'VM-TEST-01', cpu: 2, ram: 8, storage: 200, os: 'Ubuntu 20.04 LTS', cluster: 'Cluster-B', folder: 'Test', createdAt: '2023-06-18' },
-  { name: 'VM-PROD-02', cpu: 16, ram: 64, storage: 2048, os: 'Windows Server 2022', cluster: 'Cluster-A', folder: 'Production', createdAt: '2023-07-22' },
-  { name: 'VM-STAGING-01', cpu: 4, ram: 16, storage: 500, os: 'Rocky Linux 9', cluster: 'Cluster-D', folder: 'Staging', createdAt: '2023-08-30' },
-  { name: 'VM-ARCHIVE-01', cpu: 2, ram: 4, storage: 1000, os: 'Ubuntu 22.04 LTS', cluster: 'Cluster-C', folder: 'Archive', createdAt: '2023-09-14' },
-  { name: 'VM-WEB-03', cpu: 4, ram: 16, storage: 500, os: 'Windows Server 2022', cluster: 'Cluster-A', folder: 'Production', createdAt: '2023-10-01' },
-])
-
 const columns = [
   { key: 'name', label: 'Nom VM' },
-  { key: 'cpu', label: 'CPU' },
+  { key: 'cpu_count', label: 'CPU' },
   { key: 'ram', label: 'RAM (GB)' },
-  { key: 'storage', label: 'Stockage (GB)' },
+  { key: 'storage_gb', label: 'Stockage (GB)' },
   { key: 'os', label: 'OS' },
-  { key: 'cluster', label: 'Cluster' },
-  { key: 'folder', label: 'Dossier' },
-  { key: 'createdAt', label: 'Date de création' },
+  { key: 'cluster_name', label: 'Cluster' },
+  { key: 'folder_main', label: 'Dossier' },
+  { key: 'creation_date', label: 'Date de création' },
 ]
 
 const handleSort = (key) => {
@@ -41,7 +30,21 @@ const handleSort = (key) => {
   }
 }
 
+const getVmRam = (vm) => {
+  const value = vm.memory_size_MiB ?? vm.memory?.size_MiB
+  if (value == null) return '-'
+  return `${(Number(value) / 1024).toFixed(1)}`
+}
+
+const formatDate = (value) => {
+  if (!value) return '-'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return '-'
+  return parsed.toLocaleDateString('fr-FR')
+}
+
 const getOsIcon = (os) => {
+  if (!os) return ''
   if (os.includes('Windows')) return '🪟'
   if (os.includes('Ubuntu') || os.includes('Debian')) return '🐧'
   if (os.includes('CentOS') || os.includes('Rocky')) return '🐧'
@@ -58,82 +61,113 @@ const getFolderBadge = (folder) => {
   }
   return colors[folder] || 'default'
 }
+
+const sortedRows = computed(() => {
+  if (!sortColumn.value) return props.rows
+  const col = sortColumn.value
+  const dir = sortDirection.value === 'asc' ? 1 : -1
+  return [...props.rows].sort((a, b) => {
+    const aVal = a[col] ?? ''
+    const bVal = b[col] ?? ''
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return (aVal - bVal) * dir
+    }
+    return String(aVal).localeCompare(String(bVal), 'fr') * dir
+  })
+})
 </script>
 
 <template>
   <div class="table-container">
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th
-              v-for="col in columns"
-              :key="col.key"
-              :class="{ sorted: sortColumn === col.key }"
-              @click="handleSort(col.key)"
-            >
-              <div class="th-content">
-                <span>{{ col.label }}</span>
-                <span class="sort-icon" v-if="sortColumn === col.key">
-                  <svg v-if="sortDirection === 'asc'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="18 15 12 9 6 15" />
-                  </svg>
-                  <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </span>
-              </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(vm, index) in vms" :key="index" class="table-row">
-            <td class="cell-name">
-              <div class="vm-name">
-                <span class="vm-icon">🖥️</span>
-                <span class="name-text">{{ vm.name }}</span>
-              </div>
-            </td>
-            <td class="cell-cpu">
-              <div class="metric">
-                <span class="metric-value">{{ vm.cpu }}</span>
-                <span class="metric-unit">vCPU</span>
-              </div>
-            </td>
-            <td class="cell-ram">
-              <div class="metric">
-                <span class="metric-value">{{ vm.ram }}</span>
-                <span class="metric-unit">GB</span>
-              </div>
-            </td>
-            <td class="cell-storage">
-              <div class="metric">
-                <span class="metric-value">{{ vm.storage }}</span>
-                <span class="metric-unit">GB</span>
-              </div>
-            </td>
-            <td class="cell-os">
-              <div class="os-info">
-                <span class="os-icon">{{ getOsIcon(vm.os) }}</span>
-                <span class="os-name">{{ vm.os }}</span>
-              </div>
-            </td>
-            <td class="cell-cluster">
-              <span class="cluster-badge">{{ vm.cluster }}</span>
-            </td>
-            <td class="cell-folder">
-              <span class="folder-badge" :class="getFolderBadge(vm.folder)">{{ vm.folder }}</span>
-            </td>
-            <td class="cell-date">
-              <span class="date-text">{{ vm.createdAt }}</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-if="loading" class="table-loading">
+      <div class="spinner"></div>
+      <span>Chargement des machines virtuelles…</span>
     </div>
-    <div class="table-footer">
-      <span class="results-count">Affichage de <strong>{{ vms.length }}</strong> VMs</span>
+
+    <div v-else-if="rows.length === 0" class="table-empty">
+      {{ emptyMessage }}
     </div>
+
+    <template v-else>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th
+                v-for="col in columns"
+                :key="col.key"
+                :class="{ sorted: sortColumn === col.key }"
+                @click="handleSort(col.key)"
+              >
+                <div class="th-content">
+                  <span>{{ col.label }}</span>
+                  <span class="sort-icon" v-if="sortColumn === col.key">
+                    <svg v-if="sortDirection === 'asc'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="18 15 12 9 6 15" />
+                    </svg>
+                    <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(vm, index) in sortedRows" :key="vm.vm_uid || index" class="table-row">
+              <td class="cell-name">
+                <div class="vm-name">
+                  <span class="vm-icon">🖥️</span>
+                  <div class="name-block">
+                    <span class="name-text">{{ vm.name || '-' }}</span>
+                    <span v-if="vm.ipAddresses && vm.ipAddresses.length" class="ip-text">
+                      {{ vm.ipAddresses.join(', ') }}
+                    </span>
+                  </div>
+                  <span v-if="vm.hasChangesToday" class="change-badge">Modifié</span>
+                </div>
+              </td>
+              <td class="cell-cpu">
+                <div class="metric">
+                  <span class="metric-value">{{ vm.cpu_count ?? vm.cpu?.count ?? '-' }}</span>
+                  <span class="metric-unit">vCPU</span>
+                </div>
+              </td>
+              <td class="cell-ram">
+                <div class="metric">
+                  <span class="metric-value">{{ getVmRam(vm) }}</span>
+                  <span class="metric-unit">GB</span>
+                </div>
+              </td>
+              <td class="cell-storage">
+                <div class="metric">
+                  <span class="metric-value">{{ vm.storage_gb ?? vm.storage ?? '-' }}</span>
+                  <span class="metric-unit">GB</span>
+                </div>
+              </td>
+              <td class="cell-os">
+                <div class="os-info">
+                  <span class="os-icon">{{ getOsIcon(vm.os) }}</span>
+                  <span class="os-name">{{ vm.os || '-' }}</span>
+                </div>
+              </td>
+              <td class="cell-cluster">
+                <span class="cluster-badge">{{ vm.cluster_name || vm.cluster || '-' }}</span>
+              </td>
+              <td class="cell-folder">
+                <span class="folder-badge" :class="getFolderBadge(vm.folder_main)">{{ vm.folder_main || '-' }}</span>
+              </td>
+              <td class="cell-date">
+                <span class="date-text">{{ formatDate(vm.creation_date || vm.create_time || vm.creation_time) }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span class="results-count">Affichage de <strong>{{ rows.length }}</strong> VMs</span>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -147,6 +181,32 @@ const getFolderBadge = (folder) => {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+.table-loading,
+.table-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: var(--neutral-500);
+  font-size: 14px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--neutral-200);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .table-scroll {
@@ -218,7 +278,7 @@ td {
 }
 
 .cell-name {
-  min-width: 160px;
+  min-width: 180px;
 }
 
 .vm-name {
@@ -231,9 +291,30 @@ td {
   font-size: 18px;
 }
 
+.name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .name-text {
   font-weight: 600;
   color: var(--neutral-800);
+}
+
+.ip-text {
+  font-size: 11px;
+  color: var(--neutral-500);
+}
+
+.change-badge {
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .metric {

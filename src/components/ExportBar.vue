@@ -1,24 +1,26 @@
 <script setup>
-import { ref } from 'vue'
+const props = defineProps({
+  exportFormat: { type: String, default: 'csv' },
+  exportScope: { type: String, default: 'current' },
+  disabled: { type: Boolean, default: false }
+})
 
-const exportFormat = ref('csv')
-const exportScope = ref('current')
-
-const handleExport = () => {
-  // Logique d'export a implementer
-}
+const emit = defineEmits(['update:exportFormat', 'update:exportScope', 'export'])
 </script>
 
 <template>
   <div class="export-bar">
     <div class="export-left">
-      <span class="export-label">Exporter les donnees</span>
+      <span class="export-label">Exporter les données</span>
     </div>
     <div class="export-controls">
       <div class="export-group">
         <label>Format</label>
         <div class="select-wrapper">
-          <select v-model="exportFormat">
+          <select
+            :value="exportFormat"
+            @change="emit('update:exportFormat', $event.target.value)"
+          >
             <option value="csv">CSV</option>
             <option value="excel">Excel</option>
           </select>
@@ -29,9 +31,12 @@ const handleExport = () => {
       </div>
 
       <div class="export-group">
-        <label>Portee</label>
+        <label>Portée</label>
         <div class="select-wrapper">
-          <select v-model="exportScope">
+          <select
+            :value="exportScope"
+            @change="emit('update:exportScope', $event.target.value)"
+          >
             <option value="current">Page actuelle</option>
             <option value="all">Toutes les pages</option>
           </select>
@@ -41,7 +46,11 @@ const handleExport = () => {
         </div>
       </div>
 
-      <button class="export-btn" @click="handleExport">
+      <button
+        class="export-btn"
+        :disabled="disabled"
+        @click="emit('export')"
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
           <polyline points="7 10 12 15 17 10" />
@@ -146,10 +155,15 @@ const handleExport = () => {
   white-space: nowrap;
 }
 
-.export-btn:hover {
+.export-btn:hover:not(:disabled) {
   background: #059669;
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+}
+
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .export-btn svg {
